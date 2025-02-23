@@ -1,9 +1,9 @@
 ### List of research papers are classified according to the subdomains 
 
-a. Perception
+  a. Perception
 
-b. Motion Planning 
+  b. Motion Planning 
 
-c. AI 
+  c. AI 
 
-d. Reinforcement Learning
+  d. Reinforcement Learning
