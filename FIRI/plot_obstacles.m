@@ -38,22 +38,8 @@ function plot_nonoverlapping_convex_obstacles_with_constraints(A, b, C, d, lb, u
     % Highlight the seed point
     plot(seed(1), seed(2), 'go', 'MarkerSize', 8, 'MarkerFaceColor', 'g');
 
-    % Draw constraint boundaries if A and b are provided
+    % Find vertices of the feasible region by solving the linear constraints
     if ~isempty(A) && ~isempty(b)
-        for j = 1:size(A,1)
-            ai = A(j,:);
-            bi = b(j);
-            if ai(2) == 0
-                x0 = [bi/ai(1); 0];
-            else
-                x0 = [0; bi/ai(2)];
-            end
-            u = [0,-1;1,0] * ai';
-            pts = [x0 - 1000*u, x0 + 1000*u];
-            plot(pts(1,:), pts(2,:), 'm--', 'LineWidth', 1.5);
-        end
-
-        % Find vertices of the feasible region by solving the linear constraints
         vertices = find_constraint_vertices(A, b);
         if ~isempty(vertices)
             k = convhull(vertices(:,1), vertices(:,2));
