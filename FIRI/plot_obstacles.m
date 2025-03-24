@@ -1,8 +1,8 @@
-function plot_nonoverlapping_convex_obstacles_with_constraints(A, b, C, d, lb, ub)
+function plot_nonoverlapping_convex_obstacles_with_constraints(A, b, lb, ub)
     % Define environment parameters
     env_size = [50, 50]; % Environment size (50m x 50m)
-    num_convex_obstacles = 10; % Number of convex obstacles
-    min_spacing = 3; % Minimum spacing between obstacles
+    num_convex_obstacles = 30; % Number of convex obstacles
+    min_spacing = 0.3; % Minimum spacing between obstacles
     side_length = 6; % Convex hull boundary (6m x 6m around seed)
 
     % Generate a single random seed point
@@ -23,16 +23,14 @@ function plot_nonoverlapping_convex_obstacles_with_constraints(A, b, C, d, lb, u
     title('Non-Overlapping Convex Obstacles with Constraints');
 
     % Plot convex obstacles
-    for i = 1:length(convex_obstacles)
+    for i = 1:numel(convex_obstacles)
         k = convhull(convex_obstacles{i}(:,1), convex_obstacles{i}(:,2));
-        fill(convex_obstacles{i}(k,1), convex_obstacles{i}(k,2), 'r', 'FaceAlpha', 0.4, 'EdgeColor', 'k');
+        fill(convex_obstacles{i}(k,1), convex_obstacles{i}(k,2), 'r', 'FaceAlpha', 0.3, 'EdgeColor', 'k');
     end
 
     % Draw the 6m x 6m boundary around the seed
-    boundary_x = [seed(1) - side_length/2, seed(1) + side_length/2, ...
-                  seed(1) + side_length/2, seed(1) - side_length/2, seed(1) - side_length/2];
-    boundary_y = [seed(2) - side_length/2, seed(2) - side_length/2, ...
-                  seed(2) + side_length/2, seed(2) + side_length/2, seed(2) - side_length/2];
+    boundary_x = seed(1) + [-1 1 1 -1 -1] * (side_length / 2);
+    boundary_y = seed(2) + [-1 -1 1 1 -1] * (side_length / 2);
     plot(boundary_x, boundary_y, 'b', 'LineWidth', 2);
 
     % Highlight the seed point
@@ -49,17 +47,17 @@ function plot_nonoverlapping_convex_obstacles_with_constraints(A, b, C, d, lb, u
 
     % Draw bounding box if lb and ub are provided
     if ~isempty(lb) && ~isempty(ub)
-        plot([lb(1),ub(1),ub(1),lb(1),lb(1)], [lb(2),lb(2),ub(2),ub(2),lb(2)], 'k-');
+        rectangle('Position', [lb(1), lb(2), ub(1)-lb(1), ub(2)-lb(2)], 'EdgeColor', 'k', 'LineWidth', 2);
         pad = (ub - lb) * 0.05;
-        xlim([lb(1)-pad(1),ub(1)+pad(1)]);
-        ylim([lb(2)-pad(2),ub(2)+pad(2)]);
+        xlim([lb(1)-pad(1), ub(1)+pad(1)]);
+        ylim([lb(2)-pad(2), ub(2)+pad(2)]);
     end
 
     hold off;
 end
 
 function vertices = find_constraint_vertices(A, b)
-    % Find the vertices of the feasible region defined by linear constraints Ax <= b
+    % Find the vertices of the feasible region defined by Ax <= b
     num_constraints = size(A, 1);
     vertices = [];
     
@@ -71,7 +69,7 @@ function vertices = find_constraint_vertices(A, b)
             b_sub = b([i,j]);
 
             % Solve the system Ax = b for two equations
-            if det(A_sub) ~= 0
+            if abs(det(A_sub)) > 1e-6
                 intersection = A_sub \ b_sub;
                 if all(A * intersection <= b)
                     vertices = [vertices; intersection'];
@@ -92,20 +90,20 @@ end
 function convex_obstacles = generate_nonoverlapping_obstacles(env_size, num_obstacles, min_spacing)
     % Generate non-overlapping convex obstacles using convex hulls
     convex_obstacles = cell(num_obstacles, 1);
-    placed_centers = []; % Store placed obstacle centers
+    placed_centers = zeros(num_obstacles, 2); % Store placed obstacle centers
     
     for i = 1:num_obstacles
         num_points = randi([3, 8]); % Each obstacle has 3-8 points
         is_valid = false;
         
-        % Ensure obstacles do not overlap and are spaced non-uniformly
+        % Ensure obstacles do not overlap and are within environment bounds
         while ~is_valid
             center = [rand * env_size(1), rand * env_size(2)];
             
             % Check minimum spacing from other obstacles
-            if isempty(placed_centers) || all(vecnorm(placed_centers - center, 2, 2) > min_spacing)
+            if i == 1 || all(vecnorm(placed_centers(1:i-1,:) - center, 2, 2) > min_spacing)
                 is_valid = true;
-                placed_centers = [placed_centers; center]; % Store the new center
+                placed_centers(i, :) = center; % Store the new center
                 
                 % Generate points around the center
                 angles = linspace(0, 2*pi, num_points+1)' + rand * pi/4; % Random rotation
@@ -114,6 +112,10 @@ function convex_obstacles = generate_nonoverlapping_obstacles(env_size, num_obst
                 
                 x = center(1) + radii .* cos(angles);
                 y = center(2) + radii .* sin(angles);
+                
+                % Ensure points remain within the environment
+                x = min(max(x, 0), env_size(1));
+                y = min(max(y, 0), env_size(2));
                 
                 convex_obstacles{i} = [x, y];
             end
@@ -127,4 +129,4 @@ b = [30; 20];
 lb = [0, 0];
 ub = [50, 50];
 
-plot_nonoverlapping_convex_obstacles_with_constraints(A, b, [], [], lb, ub);
+plot_nonoverlapping_convex_obstacles_with_constraints(A, b, lb, ub);
